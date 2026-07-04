@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Upload token · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+  <h1 class="text-xl font-semibold mb-1">Upload token for {{ project.name }}</h1>
+  <div class="mb-4 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-4 py-2.5 text-sm font-medium">
+    Copy it now — this token is shown once and stored only as a hash.
+  </div>
+  <div class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] p-4 mb-6">
+    <code id="token" class="block font-mono text-sm break-all select-all">{{ token }}</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('token').textContent)"
+            class="mt-3 rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+      Copy to clipboard
+    </button>
+  </div>
+
+  <h2 class="font-semibold mb-2">Upload from CI</h2>
+  <pre class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0d1117] p-4 text-xs font-mono overflow-x-auto"><code>playcheck --output jsonl playbook.yml &gt; events.jsonl
+curl -X POST "https://YOUR-HOST/api/v1/previews?repo=$GITHUB_REPOSITORY&amp;branch=$GITHUB_REF_NAME&amp;commit=$GITHUB_SHA&amp;actor=$GITHUB_ACTOR" \
+  -H "Authorization: Bearer $PLAYCHECK_TOKEN" \
+  --data-binary @events.jsonl</code></pre>
+
+  <a href="{% url 'preview-list' org.slug project.slug %}" class="mt-6 inline-block rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 transition-colors">
+    Go to project
+  </a>
+</div>
+{% endblock %}

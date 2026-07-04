@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Billing · {{ org.name }} · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">{{ org.name }} — billing</h1>
+  <a href="{% url 'org-members' org.slug %}" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Members</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 max-w-3xl">
+  <div class="rounded-md border {% if usage.is_team %}border-violet-400 dark:border-violet-700{% else %}border-zinc-200 dark:border-zinc-800{% endif %} bg-white dark:bg-[#161b22] p-5">
+    <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">Current plan</div>
+    <div class="text-2xl font-semibold {% if usage.is_team %}text-violet-700 dark:text-violet-300{% endif %}">{{ usage.plan }}</div>
+    {% if subscription and subscription.current_period_end %}
+      <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">renews {{ subscription.current_period_end|date:"M j, Y" }}</div>
+    {% endif %}
+    <div class="mt-4">
+      {% if usage.is_team %}
+        <form method="post" action="{% url 'org-portal' org.slug %}">
+          {% csrf_token %}
+          <button type="submit" class="rounded-md border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Manage subscription</button>
+        </form>
+      {% elif creem_configured %}
+        <form method="post" action="{% url 'org-checkout' org.slug %}">
+          {% csrf_token %}
+          <button type="submit" class="rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 transition-colors">Upgrade to Team</button>
+        </form>
+      {% else %}
+        <button disabled class="rounded-md bg-zinc-300 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-sm font-medium px-4 py-2 cursor-not-allowed" title="Set CREEM_API_KEY to enable billing">Upgrade to Team</button>
+        <p class="mt-1 text-xs text-zinc-400 dark:text-zinc-500">Billing not configured (CREEM_API_KEY unset).</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] p-5">
+    <div class="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-3">Usage</div>
+    <dl class="space-y-2 text-sm">
+      <div class="flex justify-between">
+        <dt class="text-zinc-500 dark:text-zinc-400">Projects</dt>
+        <dd class="font-medium">{{ usage.projects }}{% if usage.max_projects %} / {{ usage.max_projects }}{% endif %}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-zinc-500 dark:text-zinc-400">Members</dt>
+        <dd class="font-medium">{{ usage.members }}{% if usage.max_members %} / {{ usage.max_members }}{% endif %}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-zinc-500 dark:text-zinc-400">Preview history</dt>
+        <dd class="font-medium">{% if usage.history_days %}{{ usage.history_days }} days{% else %}unlimited{% endif %}</dd>
+      </div>
+    </dl>
+    {% if not usage.is_team %}
+    <p class="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+      Team: unlimited projects, members, and history.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Members · {{ org.name }} · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">{{ org.name }} — members</h1>
+  {% if is_admin %}
+  <div class="flex items-center gap-3 text-sm">
+    <a href="{% url 'org-billing' org.slug %}" class="text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Billing</a>
+    <a href="{% url 'org-audit' org.slug %}" class="text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Audit log</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] mb-6">
+  <table class="w-full text-sm">
+    <thead class="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+      <tr>
+        <th class="px-4 py-2.5 font-semibold">User</th>
+        <th class="px-4 py-2.5 font-semibold">Role</th>
+        <th class="px-4 py-2.5 font-semibold">Joined</th>
+        {% if is_admin %}<th class="px-4 py-2.5"></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {% for m in members %}
+      <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
+        <td class="px-4 py-2.5 font-medium">{{ m.user.username }}{% if m.user == user %} <span class="text-xs text-zinc-400">(you)</span>{% endif %}</td>
+        <td class="px-4 py-2.5">
+          <span class="inline-block rounded-full px-2 py-0.5 text-xs font-semibold border {% if m.role == 'admin' %}bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-800{% else %}bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700{% endif %}">{{ m.get_role_display }}</span>
+        </td>
+        <td class="px-4 py-2.5 text-zinc-500 dark:text-zinc-400">{{ m.created_at|naturaltime }}</td>
+        {% if is_admin %}
+        <td class="px-4 py-2.5 text-right whitespace-nowrap">
+          <form method="post" action="{% url 'org-member-role' org.slug m.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="text-xs text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              {% if m.role == 'admin' %}Make member{% else %}Make admin{% endif %}
+            </button>
+          </form>
+          <form method="post" action="{% url 'org-member-remove' org.slug m.pk %}" class="inline ml-3"
+                onsubmit="return confirm('Remove {{ m.user.username }} from {{ org.name }}?');">
+            {% csrf_token %}
+            <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Remove</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_admin %}
+<div class="max-w-xl rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] p-4 mb-6">
+  <h2 class="font-semibold mb-2">Invite a teammate</h2>
+  <form method="post" action="{% url 'org-invite-new' org.slug %}" class="flex flex-wrap gap-2">
+    {% csrf_token %}
+    <input type="email" name="email" required placeholder="teammate@example.com"
+           class="flex-1 min-w-48 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#0d1117] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+    <select name="role" class="rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-[#0d1117] px-2 py-2 text-sm">
+      <option value="member">Member</option>
+      <option value="admin">Admin</option>
+    </select>
+    <button type="submit" class="rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 transition-colors">Create invite link</button>
+  </form>
+  <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">You'll get a link to send them — no email is sent automatically.</p>
+
+  {% if pending_invites %}
+  <h3 class="mt-4 mb-1 text-sm font-semibold">Pending invites</h3>
+  <ul class="divide-y divide-zinc-100 dark:divide-zinc-800 text-sm">
+    {% for inv in pending_invites %}
+    <li class="py-2 flex items-center justify-between gap-2">
+      <span>{{ inv.email }} <span class="text-xs text-zinc-400">({{ inv.get_role_display|lower }}, {{ inv.created_at|naturaltime }})</span></span>
+      <span class="flex items-center gap-3">
+        <button type="button" class="text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                onclick="navigator.clipboard.writeText(window.location.origin + '/invites/{{ inv.token }}/')">Copy link</button>
+        <form method="post" action="{% url 'org-invite-revoke' org.slug inv.pk %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:underline">Revoke</button>
+        </form>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

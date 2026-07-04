@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Integration docs · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="max-w-3xl">
+  <h1 class="text-2xl font-semibold mb-1">Send previews to Playcheck Cloud</h1>
+  <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-8">
+    Three steps: create a project to get an upload token, run
+    <a href="https://github.com/Cjayy77/Playcheck" class="text-violet-600 dark:text-violet-400 hover:underline">playcheck</a>
+    in CI, upload the event stream. The dashboard renders exactly what the CLI saw —
+    including every task that could <em>not</em> be simulated.
+  </p>
+
+  <h2 class="text-lg font-semibold mb-2">1 · Get an upload token</h2>
+  <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-6">
+    Create a project from your <a href="{% url 'dashboard' %}" class="text-violet-600 dark:text-violet-400 hover:underline">dashboard</a> —
+    the token (<code class="font-mono text-xs">pck_…</code>) is shown once. Store it as a CI secret named
+    <code class="font-mono text-xs">PLAYCHECK_TOKEN</code>. Admins can rotate it any time from project settings.
+  </p>
+
+  <h2 class="text-lg font-semibold mb-2">2 · GitHub Actions (recommended)</h2>
+  <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-2">
+    The public Action posts the preview as a PR comment; the two optional inputs
+    below also upload it here.
+  </p>
+  <div class="relative mb-6">
+    <button onclick="copyBlock(this)" class="absolute right-2 top-2 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white/80 dark:bg-zinc-800/80 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">Copy</button>
+    <pre class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0d1117] p-4 text-xs font-mono overflow-x-auto"><code>name: playcheck
+on: pull_request
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Cjayy77/Playcheck@v1
+        with:
+          playbook: site.yml
+          inventory: inventories/production
+          upload-url: https://{{ request.get_host }}
+          api-token: ${% templatetag openvariable %} secrets.PLAYCHECK_TOKEN {% templatetag closevariable %}</code></pre>
+  </div>
+
+  <h2 class="text-lg font-semibold mb-2">3 · Any other CI (plain curl)</h2>
+  <p class="text-sm text-zinc-600 dark:text-zinc-300 mb-2">
+    Save the raw JSONL event stream with <code class="font-mono text-xs">--save-events</code>
+    and POST it verbatim. Metadata travels as query parameters; all are optional.
+  </p>
+  <div class="relative mb-6">
+    <button onclick="copyBlock(this)" class="absolute right-2 top-2 rounded-md border border-zinc-300 dark:border-zinc-600 bg-white/80 dark:bg-zinc-800/80 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">Copy</button>
+    <pre class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0d1117] p-4 text-xs font-mono overflow-x-auto"><code>pip install playcheck
+playcheck run site.yml -i inventories/production \
+  --quiet --save-events events.jsonl
+
+curl -sS --fail -X POST \
+  "https://{{ request.get_host }}/api/v1/previews?repo=$CI_REPO&branch=$CI_BRANCH&commit=$CI_COMMIT&actor=$CI_USER" \
+  -H "Authorization: Bearer $PLAYCHECK_TOKEN" \
+  --data-binary @events.jsonl</code></pre>
+  </div>
+
+  <h2 class="text-lg font-semibold mb-2">API notes</h2>
+  <ul class="list-disc pl-5 text-sm text-zinc-600 dark:text-zinc-300 space-y-1 mb-8">
+    <li>Endpoint: <code class="font-mono text-xs">POST /api/v1/previews</code> — versioned; old CLI versions keep working.</li>
+    <li>Body: the playcheck JSONL event stream, verbatim. Query params: <code class="font-mono text-xs">repo, branch, commit, pr, actor</code>.</li>
+    <li>Returns <code class="font-mono text-xs">201</code> with the preview URL and summary counts.</li>
+    <li>Rate limit: 30 uploads per project per minute (<code class="font-mono text-xs">429</code> beyond).</li>
+    <li>Secrets never reach us: <code class="font-mono text-xs">no_log</code> and <code class="font-mono text-xs">diff: false</code> content is censored by Ansible before the CLI ever sees it.</li>
+  </ul>
+</div>
+
+<script>
+  function copyBlock(btn) {
+    var code = btn.parentElement.querySelector("code");
+    navigator.clipboard.writeText(code.textContent).then(function () {
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+    });
+  }
+</script>
+{% endblock %}

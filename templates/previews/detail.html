@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Preview #{{ preview.pk }} · {{ project.name }} · Playcheck Cloud{% endblock %}
+{% block content %}
+
+<nav class="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+  <span class="text-zinc-400 dark:text-zinc-500">{{ org.name }}</span>
+  <span class="mx-1">/</span>
+  <a href="{% url 'preview-list' org.slug project.slug %}" class="text-violet-700 dark:text-violet-400 hover:underline">{{ project.name }}</a>
+  <span class="mx-1">/</span> preview #{{ preview.pk }}
+</nav>
+
+<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-4">
+  <h1 class="text-xl font-semibold">
+    {{ preview.repo|default:project.name }}
+    {% if preview.branch %}<span class="text-zinc-500 dark:text-zinc-400 font-normal">· {{ preview.branch }}</span>{% endif %}
+  </h1>
+  <div class="text-sm text-zinc-500 dark:text-zinc-400">
+    {% if preview.short_commit %}<code class="font-mono">{{ preview.short_commit }}</code>{% endif %}
+    {% if preview.pr_number %} · PR #{{ preview.pr_number }}{% endif %}
+    {% if preview.actor %} · by {{ preview.actor }}{% endif %}
+    · {{ preview.created_at|naturaltime }}
+  </div>
+</div>
+
+{# ---- The honesty guarantee: NOT-PREVIEWED warning above everything ---- #}
+{% if report.summary.not_previewable %}
+<div class="mb-4 rounded-md border-2 border-fuchsia-500 dark:border-fuchsia-600 bg-fuchsia-50 dark:bg-fuchsia-950/50 px-4 py-3">
+  <p class="font-bold text-fuchsia-900 dark:text-fuchsia-200 text-base">
+    ⚠ {{ report.summary.not_previewable }} task{{ report.summary.not_previewable|pluralize }} {% if report.summary.not_previewable == 1 %}was{% else %}were{% endif %} NOT simulated
+  </p>
+  <p class="text-sm text-fuchsia-800 dark:text-fuchsia-300">
+    These modules do not support check mode — the real run may change more than shown below.
+  </p>
+</div>
+{% else %}
+<div class="mb-4 rounded-md border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 px-4 py-2.5 text-sm font-medium text-green-800 dark:text-green-300">
+  ✓ Every task could be previewed.
+</div>
+{% endif %}
+
+{% if report.no_hosts_matched %}
+<div class="mb-4 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-2.5 text-sm font-medium text-amber-900 dark:text-amber-200">
+  ⚠ One or more plays matched no hosts in this inventory.
+</div>
+{% endif %}
+
+{# ---- Summary strip ---- #}
+<div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+  <div class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] px-4 py-3">
+    <div class="text-2xl font-semibold">{{ report.summary.hosts_changed }}<span class="text-zinc-400 text-base font-normal"> / {{ report.summary.hosts_total }}</span></div>
+    <div class="text-zinc-500 dark:text-zinc-400">hosts would change</div>
+  </div>
+  <div class="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] px-4 py-3">
+    <div class="text-2xl font-semibold">{{ report.summary.tasks_changed }}</div>
+    <div class="text-zinc-500 dark:text-zinc-400">tasks would change{% if report.summary.diffs_hidden %} ({{ report.summary.diffs_hidden }} hidden diff{{ report.summary.diffs_hidden|pluralize }}){% endif %}</div>
+  </div>
+  <div class="rounded-md border px-4 py-3 {% if report.summary.not_previewable %}border-fuchsia-400 dark:border-fuchsia-700 bg-fuchsia-50 dark:bg-fuchsia-950/40{% else %}border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22]{% endif %}">
+    <div class="text-2xl font-semibold {% if report.summary.not_previewable %}text-fuchsia-700 dark:text-fuchsia-300{% endif %}">{{ report.summary.not_previewable }}</div>
+    <div class="{% if report.summary.not_previewable %}text-fuchsia-700 dark:text-fuchsia-300 font-medium{% else %}text-zinc-500 dark:text-zinc-400{% endif %}">not previewable</div>
+  </div>
+  <div class="rounded-md border px-4 py-3 {% if report.summary.failed %}border-red-400 dark:border-red-800 bg-red-50 dark:bg-red-950/40{% else %}border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22]{% endif %}">
+    <div class="text-2xl font-semibold {% if report.summary.failed %}text-red-700 dark:text-red-300{% endif %}">{{ report.summary.failed }}</div>
+    <div class="{% if report.summary.failed %}text-red-700 dark:text-red-300 font-medium{% else %}text-zinc-500 dark:text-zinc-400{% endif %}">failed / unreachable</div>
+  </div>
+</div>
+
+{% if report.summary.ran_for_real %}
+<div class="mb-4 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-2.5 text-sm font-medium text-amber-900 dark:text-amber-200">
+  » {{ report.summary.ran_for_real }} task{{ report.summary.ran_for_real|pluralize }} executed for real despite --check (check_mode: false).
+</div>
+{% endif %}
+
+{# ---- Per-host groups ---- #}
+{% for group in report.groups %}
+<section class="mb-5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22] overflow-hidden">
+  <header class="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0d1117]">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="font-mono font-semibold text-cyan-700 dark:text-cyan-400">{{ group.label }}</span>
+      <span class="text-sm text-zinc-600 dark:text-zinc-300">
+        {{ group.changes }} change{{ group.changes|pluralize }}{% if group.hosts|length > 1 %} each{% endif %}
+      </span>
+      {% if group.not_previewable %}
+        <span class="text-sm font-bold text-fuchsia-700 dark:text-fuchsia-300">{{ group.not_previewable }} not previewable</span>
+      {% endif %}
+      {% if group.failed %}
+        <span class="text-sm font-bold text-red-700 dark:text-red-400">{{ group.failed }} failed</span>
+      {% endif %}
+      {% if group.unreachable %}
+        <span class="text-sm font-bold text-red-700 dark:text-red-400">unreachable</span>
+      {% endif %}
+      {% if group.ran_for_real %}
+        <span class="text-sm font-medium text-amber-700 dark:text-amber-400">{{ group.ran_for_real }} ran for real</span>
+      {% endif %}
+    </div>
+    {% if group.hosts|length > 1 %}
+      <div class="mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-mono">= identical on: {{ group.hosts|join:" " }}</div>
+    {% endif %}
+  </header>
+
+  <div class="divide-y divide-zinc-100 dark:divide-zinc-800">
+    {% for t in group.tasks %}
+    <div class="px-4 py-3">
+      {% if t.category == "changed" %}
+        <div class="text-sm font-medium text-amber-700 dark:text-amber-400">~ {{ t.task }} <span class="text-zinc-400 dark:text-zinc-500 font-normal">({{ t.short_action }})</span></div>
+        {% for entry in t.diffs %}
+        <div class="mt-2 rounded-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          <div class="px-3 py-1.5 text-xs font-mono font-semibold bg-zinc-100 dark:bg-[#0d1117] text-zinc-600 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">{{ entry.header }}</div>
+          <div class="overflow-x-auto">
+            <pre class="font-mono text-xs leading-5 min-w-max">{% for line in entry.lines %}<span class="flex {% if line.kind == 'add' %}bg-green-50 dark:bg-green-950/50 text-green-800 dark:text-green-300{% elif line.kind == 'del' %}bg-red-50 dark:bg-red-950/50 text-red-800 dark:text-red-300{% elif line.kind == 'hunk' %}bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400{% else %}text-zinc-600 dark:text-zinc-300{% endif %}"><span class="w-8 shrink-0 select-none text-center {% if line.kind == 'add' %}bg-green-100/80 dark:bg-green-900/40{% elif line.kind == 'del' %}bg-red-100/80 dark:bg-red-900/40{% else %}text-zinc-400 dark:text-zinc-500{% endif %}">{% if line.kind != 'hunk' %}{{ line.marker }}{% endif %}</span><span class="px-2 whitespace-pre">{{ line.text }}</span></span>{% endfor %}</pre>
+          </div>
+        </div>
+        {% endfor %}
+      {% elif t.category == "diff_hidden" %}
+        <div class="text-sm font-medium text-amber-700 dark:text-amber-400">~ {{ t.task }} <span class="text-zinc-400 dark:text-zinc-500 font-normal">({{ t.short_action }})</span>
+          <span class="ml-2 text-xs text-zinc-500 dark:text-zinc-400 font-normal">[{{ t.hidden_reason }}]</span>
+        </div>
+      {% elif t.category == "not_previewable" %}
+        <div class="text-sm font-bold text-fuchsia-700 dark:text-fuchsia-300">! {{ t.task }} <span class="font-normal text-zinc-400 dark:text-zinc-500">({{ t.short_action }})</span></div>
+        <div class="text-sm text-fuchsia-700 dark:text-fuchsia-300">NOT PREVIEWED — {{ t.note }}</div>
+      {% elif t.category == "ran_for_real" %}
+        <div class="text-sm font-medium text-amber-700 dark:text-amber-400">» {{ t.task }} <span class="text-zinc-400 dark:text-zinc-500 font-normal">({{ t.short_action }})</span>
+          <span class="ml-2 text-xs text-zinc-500 dark:text-zinc-400 font-normal">[executed for real: check_mode: false]</span>
+        </div>
+      {% elif t.category == "failed" or t.category == "unreachable" %}
+        <div class="text-sm font-bold text-red-700 dark:text-red-400">
+          ✗ {{ t.task }} <span class="font-normal text-zinc-400 dark:text-zinc-500">({{ t.short_action }})</span>
+          {% if t.category == "unreachable" %}UNREACHABLE{% else %}FAILED{% endif %}{% if t.ignore_errors %} (ignored){% endif %}
+        </div>
+        {% if t.msg %}<div class="text-sm text-red-700 dark:text-red-400 mt-0.5 font-mono">{{ t.msg }}</div>{% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if group.quiet_ok or group.quiet_skipped %}
+    <div class="px-4 py-2 text-xs text-zinc-500 dark:text-zinc-400">
+      ·
+      {% if group.quiet_ok %}{{ group.quiet_ok }} ok (no change){% endif %}{% if group.quiet_ok and group.quiet_skipped %}, {% endif %}
+      {% if group.quiet_skipped %}{{ group.quiet_skipped }} skipped by condition{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endfor %}
+
+{% if report.unparsed_lines %}
+<div class="text-xs text-zinc-500 dark:text-zinc-400">{{ report.unparsed_lines }} unparsed line{{ report.unparsed_lines|pluralize }} in the uploaded stream.</div>
+{% endif %}
+
+{% endblock %}

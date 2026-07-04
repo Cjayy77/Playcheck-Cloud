@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Playcheck Cloud{% endblock %}</title>
+  <script>
+    // Set theme before first paint to avoid flashing.
+    (function () {
+      var stored = localStorage.getItem("theme");
+      var dark = stored ? stored === "dark"
+                        : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (dark) document.documentElement.classList.add("dark");
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+  <script defer src="{% static 'js/htmx.min.js' %}"></script>
+</head>
+<body class="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-[#0d1117] dark:text-zinc-100 antialiased">
+
+  <nav class="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#010409]">
+    <div class="mx-auto max-w-7xl px-4 h-14 flex items-center gap-4">
+      <a href="{% url 'dashboard' %}" class="flex items-center gap-2 font-semibold tracking-tight">
+        <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-violet-600 text-white text-sm font-bold">P</span>
+        <span>Playcheck <span class="text-violet-600 dark:text-violet-400">Cloud</span></span>
+      </a>
+      <a href="{% url 'docs' %}" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Docs</a>
+      <div class="flex-1"></div>
+      {% if user.is_authenticated %}
+        <a href="{% url 'org-new' %}"
+           class="rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-3 py-1.5 transition-colors">
+          New organization
+        </a>
+      {% endif %}
+      <button id="theme-toggle" title="Toggle light/dark"
+              class="rounded-md border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <span class="dark:hidden">🌙</span><span class="hidden dark:inline">☀️</span>
+      </button>
+      {% if user.is_authenticated %}
+        <details class="relative">
+          <summary class="cursor-pointer list-none rounded-full border border-zinc-300 dark:border-zinc-700 h-8 w-8 flex items-center justify-center text-sm font-semibold select-none">
+            {{ user.username|slice:":1"|upper }}
+          </summary>
+          <div class="absolute right-0 mt-2 w-44 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-[#161b22] shadow-lg z-10 py-1 text-sm">
+            <div class="px-3 py-1.5 text-zinc-500 dark:text-zinc-400 truncate">{{ user.username }}</div>
+            <form method="post" action="{% url 'account_logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800">Sign out</button>
+            </form>
+          </div>
+        </details>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="mx-auto max-w-7xl px-4 py-6 flex gap-6">
+    {% if user.is_authenticated %}
+      <aside class="hidden md:block w-56 shrink-0">
+        {% for o in sidebar_orgs %}
+          <div class="mb-4">
+            <div class="flex items-center justify-between mb-1.5">
+              <a href="{% url 'org-members' o.slug %}"
+                 class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                {{ o.name }}{% if o.is_personal %} (personal){% endif %}
+              </a>
+            </div>
+            <ul class="space-y-0.5 text-sm">
+              {% for p in o.projects.all %}
+                <li>
+                  <a href="{% url 'preview-list' o.slug p.slug %}"
+                     class="block rounded-md px-2 py-1.5 transition-colors hover:bg-zinc-200/60 dark:hover:bg-zinc-800 {% if project and project.pk == p.pk %}bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-violet-300 font-medium{% endif %}">
+                    {{ p.name }}
+                  </a>
+                </li>
+              {% empty %}
+                <li class="text-zinc-400 dark:text-zinc-500 px-2 py-1 text-xs">no projects</li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+        <a href="{% url 'org-new' %}" class="block px-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">+ New organization</a>
+      </aside>
+    {% endif %}
+    <main class="min-w-0 flex-1">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="mb-4 rounded-md border px-4 py-2.5 text-sm break-all {% if message.tags == 'error' %}border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300{% else %}border-violet-300 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    document.getElementById("theme-toggle").addEventListener("click", function () {
+      var root = document.documentElement;
+      root.classList.toggle("dark");
+      localStorage.setItem("theme", root.classList.contains("dark") ? "dark" : "light");
+    });
+  </script>
+</body>
+</html>

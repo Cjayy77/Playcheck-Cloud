@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Audit log · {{ org.name }} · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-xl font-semibold">{{ org.name }} — audit log</h1>
+  <a href="{% url 'org-members' org.slug %}" class="text-sm text-zinc-500 dark:text-zinc-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Members</a>
+</div>
+
+<div class="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#161b22]">
+  <table class="w-full text-sm">
+    <thead class="text-left text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+      <tr>
+        <th class="px-4 py-2.5 font-semibold">When</th>
+        <th class="px-4 py-2.5 font-semibold">Actor</th>
+        <th class="px-4 py-2.5 font-semibold">Action</th>
+        <th class="px-4 py-2.5 font-semibold">Target</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {% for e in events %}
+      <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
+        <td class="px-4 py-2.5 whitespace-nowrap text-zinc-500 dark:text-zinc-400" title="{{ e.created_at|date:'Y-m-d H:i:s e' }}">{{ e.created_at|naturaltime }}</td>
+        <td class="px-4 py-2.5 font-medium">{{ e.actor }}</td>
+        <td class="px-4 py-2.5"><code class="font-mono text-xs">{{ e.action }}</code></td>
+        <td class="px-4 py-2.5 text-zinc-500 dark:text-zinc-400">{{ e.target|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500 dark:text-zinc-400">No events yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page.has_other_pages %}
+<div class="mt-4 flex items-center justify-between text-sm">
+  <span class="text-zinc-500 dark:text-zinc-400">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  <div class="flex gap-2">
+    {% if page.has_previous %}
+      <a href="?page={{ page.previous_page_number }}" class="rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">← Newer</a>
+    {% endif %}
+    {% if page.has_next %}
+      <a href="?page={{ page.next_page_number }}" class="rounded-md border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Older →</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

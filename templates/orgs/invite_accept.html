@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Join {{ invite.org.name }} · Playcheck Cloud{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-16 text-center">
+  <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600 text-white text-xl font-bold mb-4">{{ invite.org.name|slice:":1"|upper }}</span>
+  <h1 class="text-xl font-semibold mb-2">Join {{ invite.org.name }}?</h1>
+  {% if already_member %}
+  <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">You're already a member of this organization.</p>
+  <a href="/" class="inline-block rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 transition-colors">Go to dashboard</a>
+  {% elif org_full %}
+  <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+    This organization is at its Free-plan member limit. Ask an admin of
+    {{ invite.org.name }} to upgrade to the Team plan, then try again.
+  </p>
+  <a href="/" class="inline-block rounded-md border border-zinc-300 dark:border-zinc-700 text-sm font-medium px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Back to dashboard</a>
+  {% else %}
+  <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+    You've been invited as <strong>{{ invite.get_role_display|lower }}</strong>. You'll see the org's projects and previews.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="rounded-md bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-5 py-2 transition-colors">Join organization</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
