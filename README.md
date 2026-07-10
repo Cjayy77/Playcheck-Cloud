@@ -5,7 +5,7 @@ Private and commercial; the CLI stays MIT. See CLAUDE.md for ground rules and
 [GUIDE.md](GUIDE.md) for the full product + technical guide (plans, roles,
 orgs, billing, integrations, architecture). 
  
-## Run locally
+## Run locally 
 
 ```powershell
 python -m venv .venv
