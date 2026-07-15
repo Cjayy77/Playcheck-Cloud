@@ -1,5 +1,5 @@
 # Playcheck Cloud  
-
+ 
 Hosted dashboard for [Playcheck](https://github.com/Cjayy77/Playcheck) previews.
 Private and commercial; the CLI stays MIT. See CLAUDE.md for ground rules and 
 [GUIDE.md](GUIDE.md) for the full product + technical guide (plans, roles, 
